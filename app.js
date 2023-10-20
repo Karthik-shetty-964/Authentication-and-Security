@@ -4,10 +4,13 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import ejs from 'ejs';
 import mongoose from 'mongoose';
-import encrypt from 'mongoose-encryption';
+// import encrypt from 'mongoose-encryption';
+// import md5 from 'md5';
+import bcrypt from 'bcrypt';
 
 const app = express();
 const port = process.env.PORT || 3000;
+const saltRound = 10;
 
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
@@ -33,7 +36,7 @@ const userSchema = new mongoose.Schema({
     }
 })
 
-userSchema.plugin(encrypt, {secret : process.env.SECRETSTRING, encryptedFields : ["password"]});
+// userSchema.plugin(encrypt, {secret : process.env.SECRETSTRING, encryptedFields : ["password"]});
 
 const User = mongoose.model('User', userSchema);
 
@@ -61,10 +64,13 @@ app.post('/register', (req, res) => {
             });
 
         } else {
-            const userData = new User({
-                email : req.body.email,
-                password : req.body.password
-            });
+            bcrypt.hash(req.body.password, saltRound)
+            .then(pass => {
+                const userData = new User({
+                    email : req.body.email,
+                    // password : md5(req.body.password)
+                    password : pass
+                });
 
             userData.save()
             .then(result => {
@@ -80,6 +86,9 @@ app.post('/register', (req, res) => {
                     console.log(err);
                 }
             })
+            })
+
+            
         }
     })
 })
@@ -92,14 +101,17 @@ app.post('/login', (req, res) => {
                 mess : "Account doesn't exist. Please register yourself first!"
             })
         } else {
-            if(result.password === req.body.password){
-                res.render('secrets.ejs');
-                console.log("login succesfull");
-            } else {
-                res.render("login", {
-                    mess : "Password doesn't match!"
-                })
-            }
+            bcrypt.compare(req.body.password, result.password)
+            .then(result => {
+                if(result) {
+                    res.render('secrets.ejs');
+                    console.log("login succesfull");
+                }else {
+                    res.render("login", {
+                        mess : "Password doesn't match!"
+                    })
+                }
+            })
         }
     }).catch(err => {
         console.log(err);
