@@ -53,8 +53,7 @@ app.get('/login', (req, res) => {
     res.render("login.ejs");
 })
 
-app.post('/register', (req, res) => {
-    
+app.post('/register', (req, res) => {  
     User.findOne({email : req.body.email})
     .then(result => {
         if(result) {
